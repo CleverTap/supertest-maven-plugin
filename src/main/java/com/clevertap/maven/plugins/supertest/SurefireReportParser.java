@@ -20,6 +20,7 @@ public class SurefireReportParser {
     SurefireReportParser(File file) {
         xmlFile = file;
     }
+    
 
     public RunResult parse() throws ParserConfigurationException, IOException, SAXException {
         final List<String> failureTagsList = Arrays.asList("failure", "error", "rerunFailure",
