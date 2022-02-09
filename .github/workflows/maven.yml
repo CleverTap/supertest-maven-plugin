@@ -41,5 +41,5 @@ jobs:
       - name: Test, and report to SonarCloud
         run: mvn --file pom.xml -P jacoco verify sonar:sonar
         env:
-          SONAR_LOGIN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
