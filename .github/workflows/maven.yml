@@ -39,9 +39,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-sonar-
       - name: Test, and report to SonarCloud
-        run: mvn --file pom.xml test
-#      - name: Test, and report to SonarCloud
-#        run: mvn --file pom.xml -P jacoco verify sonar:sonar
-#        env:
-#          SONAR_LOGIN_TOKEN: ${{ secrets.SONAR_LOGIN_TOKEN }}
-#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: mvn --file pom.xml -P jacoco verify sonar:sonar
+        env:
+          SONAR_LOGIN: ${{ secrets.SONAR_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
