@@ -43,6 +43,11 @@ Additionally, maven test options can also be sent as command line arguments like
 ```
 -DmvnTestOpts="-P jacoco -fae jacoco:report"
 ```
+Other supported command line arguments are listed below:
+```
+-DrerunProfile
+-DretryRunCount
+```
 
 ## Setting up Supertest for local development
 
