@@ -1,14 +1,16 @@
 package com.clevertap.maven.plugins.supertest;
 
-import static junit.framework.Assert.assertEquals;
+import org.junit.jupiter.api.Test;
+import org.xml.sax.SAXException;
 
+import javax.xml.parsers.ParserConfigurationException;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import javax.xml.parsers.ParserConfigurationException;
-import org.junit.jupiter.api.Test;
-import org.xml.sax.SAXException;
+
+import static junit.framework.Assert.assertEquals;
+import static org.junit.Assert.*;
 
 /**
  * Created by Jude Pereira, at 12:48 on 04/02/2022.
