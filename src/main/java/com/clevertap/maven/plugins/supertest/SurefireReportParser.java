@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
@@ -29,6 +30,7 @@ public class SurefireReportParser {
         DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
         DocumentBuilder builder = factory.newDocumentBuilder();
         final Document doc = builder.parse(xmlFile);
+        factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
 
         doc.getDocumentElement().normalize();
         final Node testsuite = doc.getElementsByTagName("testsuite").item(0);
