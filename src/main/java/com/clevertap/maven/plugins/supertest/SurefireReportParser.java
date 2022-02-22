@@ -29,6 +29,7 @@ public class SurefireReportParser {
         DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
         DocumentBuilder builder = factory.newDocumentBuilder();
         final Document doc = builder.parse(xmlFile);
+        Model model = (Model) u.unmarshal(doc);
 
         doc.getDocumentElement().normalize();
         final Node testsuite = doc.getElementsByTagName("testsuite").item(0);
