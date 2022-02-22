@@ -28,9 +28,10 @@ public class SurefireReportParser {
                 "rerunError");
 
         DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
         DocumentBuilder builder = factory.newDocumentBuilder();
         final Document doc = builder.parse(xmlFile);
-        factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
+        
 
         doc.getDocumentElement().normalize();
         final Node testsuite = doc.getElementsByTagName("testsuite").item(0);
