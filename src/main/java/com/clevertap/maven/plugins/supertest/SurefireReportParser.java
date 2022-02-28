@@ -28,7 +28,6 @@ public class SurefireReportParser {
                 "rerunError");
 
         DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-        factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
         factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
 
         DocumentBuilder builder = factory.newDocumentBuilder();
