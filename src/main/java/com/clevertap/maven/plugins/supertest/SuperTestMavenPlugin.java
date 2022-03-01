@@ -150,7 +150,12 @@ public class SuperTestMavenPlugin extends AbstractMojo {
         for (String className : classnameToTestcaseList.keySet()) {
             List<String> failedTestCaseList = classnameToTestcaseList.get(className);
             if (!failedTestCaseList.isEmpty()) {
-                retryRun.append(className).append("#");
+                retryRun.append(className);
+                if(failedTestCaseList.contains("")) {
+                    retryRun.append(",");
+                    continue;
+                }
+                retryRun.append("#");
                 for (int i = 0; i < failedTestCaseList.size(); i++) {
                     retryRun.append(failedTestCaseList.get(i));
                     if (i == failedTestCaseList.size() - 1) {
