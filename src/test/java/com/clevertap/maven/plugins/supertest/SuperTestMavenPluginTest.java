@@ -12,7 +12,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static junit.framework.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 class SuperTestMavenPluginTest {
     @Test
@@ -30,6 +30,8 @@ class SuperTestMavenPluginTest {
 
         String rerunCommand = bv.createRerunCommand(classnameToTestcaseList);
         System.out.println(rerunCommand);
-        assertEquals("mvn test -Dtest=com.example.FooTest,com.example.BarTest#barTest1+barTest2,", rerunCommand);
+        // added additional condition because hashset can give any order
+        assertTrue("mvn test -Dtest=com.example.FooTest,com.example.BarTest#barTest1+barTest2,".equals(rerunCommand)
+                || "mvn test -Dtest=com.example.FooTest,com.example.BarTest#barTest2+barTest1,".equals(rerunCommand));
     }
 }
