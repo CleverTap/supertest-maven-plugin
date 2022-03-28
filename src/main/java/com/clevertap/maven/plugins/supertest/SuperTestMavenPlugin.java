@@ -9,7 +9,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import javax.xml.parsers.ParserConfigurationException;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Mojo;
@@ -33,7 +32,8 @@ public class SuperTestMavenPlugin extends AbstractMojo {
     Integer retryRunCount;
 
     public void execute() throws MojoExecutionException {
-        if (StringUtils.isBlank(mvnTestOpts)) {
+
+        if (mvnTestOpts == null) {
             mvnTestOpts = "";
         }
 
