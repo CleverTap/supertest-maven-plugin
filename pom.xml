@@ -8,6 +8,9 @@
     <artifactId>supertest-maven-plugin</artifactId>
     <packaging>maven-plugin</packaging>
     <version>1.5</version>
+         <description>A wrapper for Maven's Surefire Plugin, with advanced re-run capabilities.</description>
+         <name>supertest-maven-plugin</name>
+         <url>https://github.com/CleverTap/supertest-maven-plugin</url>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -130,6 +133,33 @@
                 </plugins>
             </build>
         </profile>
+             <profile>
+             <id>gpg_verify</id>
+             <build>
+                 <plugins>
+                     <plugin>
+                         <groupId>org.apache.maven.plugins</groupId>
+                         <artifactId>maven-gpg-plugin</artifactId>
+                         <version>1.5</version>
+                         <configuration>
+                             <gpgArguments>
+                                 <arg>--pinentry-mode</arg>
+                                 <arg>loopback</arg>
+                             </gpgArguments>
+                         </configuration>
+                         <executions>
+                             <execution>
+                                 <id>sign-artifacts</id>
+                                 <phase>verify</phase>
+                                 <goals>
+                                     <goal>sign</goal>
+                                 </goals>
+                             </execution>
+                         </executions>
+                     </plugin>
+                 </plugins>
+             </build>
+         </profile>
     </profiles>
 
     <developers>
