@@ -44,9 +44,19 @@ public class SurefireReportParser {
                     .item(1); // TODO: 04/02/2022 will fail if retry count is 0
             if (testCase.hasChildNodes() && failureTagsList.contains(n.getNodeName())) {
                 Element testCaseElement = (Element) testCase;
-                result.addTestCase(testCaseElement.getAttribute("name"));
+                String name = getLegalIdentifierName(testCaseElement.getAttribute("name"));
+                result.addTestCase(name);
             }
         }
         return result;
+    }
+
+    public String getLegalIdentifierName(String name) {
+        for(int i=0;i<name.length();i++) {
+            if(!Character.isJavaIdentifierPart(name.charAt(i))) {
+                return name.substring(0, i);
+            }
+        }
+        return name;
     }
 }
