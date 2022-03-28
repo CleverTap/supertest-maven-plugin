@@ -27,6 +27,6 @@ class ValidIdentifierTest {
 
         String rerunCommand = bv.createRerunCommand(classnameToTestcaseList);
         System.out.println(rerunCommand);
-        assertEquals("mvn test -Dtest=com.validIdentifierTest#fooTest,", rerunCommand);
+        assertEquals("mvn test -Dtest=com.validIdentifierTest#fooTest*,", rerunCommand);
     }
 }
