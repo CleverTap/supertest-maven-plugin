@@ -14,9 +14,9 @@ import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 
-public class ValidIdentifierTest {
+class ValidIdentifierTest {
     @Test
-    public void testValidIdentifier() throws IOException, ParserConfigurationException, SAXException, URISyntaxException {
+    void testValidIdentifier() throws IOException, ParserConfigurationException, SAXException, URISyntaxException {
         SuperTestMavenPlugin bv = new SuperTestMavenPlugin();
         ClassLoader classLoader = getClass().getClassLoader();
         URL validIdentifierTest = classLoader.getResource("ValidIdentifierTest.xml");
