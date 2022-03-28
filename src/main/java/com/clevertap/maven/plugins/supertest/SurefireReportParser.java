@@ -3,6 +3,7 @@ package com.clevertap.maven.plugins.supertest;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilder;
@@ -24,6 +25,7 @@ public class SurefireReportParser {
     
 
     public RunResult parse() throws ParserConfigurationException, IOException, SAXException {
+        HashSet<String> uniqueNames = new HashSet<>();
         final List<String> failureTagsList = Arrays.asList("failure", "error", "rerunFailure",
                 "rerunError");
 
@@ -45,9 +47,10 @@ public class SurefireReportParser {
             if (testCase.hasChildNodes() && failureTagsList.contains(n.getNodeName())) {
                 Element testCaseElement = (Element) testCase;
                 String name = getLegalIdentifierName(testCaseElement.getAttribute("name"));
-                result.addTestCase(name);
+                uniqueNames.add(name);
             }
         }
+        uniqueNames.forEach(result::addTestCase);
         return result;
     }
 
