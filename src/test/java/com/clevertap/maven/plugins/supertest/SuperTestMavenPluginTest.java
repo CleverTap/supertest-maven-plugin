@@ -31,7 +31,7 @@ class SuperTestMavenPluginTest {
         String rerunCommand = bv.createRerunCommand(classnameToTestcaseList);
         System.out.println(rerunCommand);
         // added additional condition because hashset can give any order
-        assertTrue("mvn test -Dtest=com.example.FooTest,com.example.BarTest#barTest1+barTest2,".equals(rerunCommand)
-                || "mvn test -Dtest=com.example.FooTest,com.example.BarTest#barTest2+barTest1,".equals(rerunCommand));
+        assertTrue("mvn test -Dtest=com.example.FooTest,com.example.BarTest#barTest1*+barTest2*,".equals(rerunCommand)
+                || "mvn test -Dtest=com.example.FooTest,com.example.BarTest#barTest2*+barTest1*,".equals(rerunCommand));
     }
 }

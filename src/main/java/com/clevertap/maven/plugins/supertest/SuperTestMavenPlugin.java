@@ -157,7 +157,7 @@ public class SuperTestMavenPlugin extends AbstractMojo {
                 }
                 retryRun.append("#");
                 for (int i = 0; i < failedTestCaseList.size(); i++) {
-                    retryRun.append(failedTestCaseList.get(i));
+                    retryRun.append(failedTestCaseList.get(i)).append("*");
                     if (i == failedTestCaseList.size() - 1) {
                         retryRun.append(",");
                     } else {
