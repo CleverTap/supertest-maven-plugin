@@ -50,13 +50,8 @@ public class SuperTestMavenPlugin extends AbstractMojo {
         final String artifactId = project.getArtifactId();
         final String groupId = project.getGroupId();
 
-        final StringBuilder processedMvnTestOpts = new StringBuilder(" ");
-        processedMvnTestOpts.append(mvnTestOpts);
-        processedMvnTestOpts.append(" -pl ").append(groupId);
-        processedMvnTestOpts.append(":").append(artifactId);
-
         int exitCode;
-        final String command = "mvn test " + processedMvnTestOpts;
+        final String command = "mvn test " + buildProcessedMvnTestOpts(artifactId, groupId);
         try {
             exitCode = runShellCommand(command, "supertest run#1");
         } catch (IOException | InterruptedException e) {
@@ -67,7 +62,10 @@ public class SuperTestMavenPlugin extends AbstractMojo {
             return;
         }
 
-        for (int retryRunNumber = 1; retryRunNumber <= retryRunCount.intValue(); retryRunNumber++) {
+        // Strip -Dtest=... from the Maven opts if specified, since these were valid for the very first run only.
+        mvnTestOpts = mvnTestOpts.replaceAll("-Dtest=(.*?)(\\s|$)", "");
+
+        for (int retryRunNumber = 1; retryRunNumber <= retryRunCount; retryRunNumber++) {
             final File[] xmlFileList = getXmlFileList(baseDir);
             final Map<String, List<String>> classnameToTestcaseList = new HashMap<>();
             for (File file : xmlFileList) {
@@ -84,7 +82,7 @@ public class SuperTestMavenPlugin extends AbstractMojo {
 
             final String runCommand = createRerunCommand(classnameToTestcaseList);
             final StringBuilder rerunCommand = new StringBuilder(runCommand);
-            rerunCommand.append(processedMvnTestOpts);
+            rerunCommand.append(buildProcessedMvnTestOpts(artifactId, groupId));
             if (rerunProfile != null) {
                 String trimmedRerunProfile = rerunProfile.replaceAll("\"", "");
                 rerunCommand.append(" -P ").append(trimmedRerunProfile);
@@ -108,12 +106,21 @@ public class SuperTestMavenPlugin extends AbstractMojo {
         }
     }
 
+    private StringBuilder buildProcessedMvnTestOpts(String artifactId, String groupId) {
+        final StringBuilder processedMvnTestOpts = new StringBuilder(" ");
+        processedMvnTestOpts.append(mvnTestOpts);
+        processedMvnTestOpts.append(" -pl ").append(groupId);
+        processedMvnTestOpts.append(":").append(artifactId);
+        return processedMvnTestOpts;
+    }
+
     /**
      * @param command shell command to be executed
      * @return process exit value, returns 1 if failure
      */
     public int runShellCommand(final String command, final String commandDescriptor)
             throws IOException, InterruptedException {
+        getLog().info("Running " + command);
         Process proc = Runtime.getRuntime().exec(command);
         InputStream inputStream = proc.getInputStream();
         InputStreamReader inputStreamReader = new InputStreamReader(inputStream);
