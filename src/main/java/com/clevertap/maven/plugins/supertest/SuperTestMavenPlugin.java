@@ -5,9 +5,18 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.StringTokenizer;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import javax.xml.parsers.ParserConfigurationException;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
@@ -18,6 +27,11 @@ import org.xml.sax.SAXException;
 
 @Mojo(name = "supertest")
 public class SuperTestMavenPlugin extends AbstractMojo {
+    // this is the max time to wait in seconds for process termination after the stdout read is
+    // finished or terminated
+    private static final int STDOUT_POST_READ_WAIT_TIMEOUT = 10;
+
+    private ExecutorService pool;
 
     @Parameter(defaultValue = "${project}", readonly = true)
     MavenProject project;
@@ -30,6 +44,10 @@ public class SuperTestMavenPlugin extends AbstractMojo {
 
     @Parameter(property = "retryRunCount", readonly = true, defaultValue = "1")
     Integer retryRunCount;
+
+    // in seconds
+    @Parameter(property = "shellNoActivityTimeout", readonly = true, defaultValue = "300")
+    Integer shellNoActivityTimeout;
 
     public void execute() throws MojoExecutionException {
 
@@ -49,6 +67,8 @@ public class SuperTestMavenPlugin extends AbstractMojo {
         final File baseDir = project.getBasedir();
         final String artifactId = project.getArtifactId();
         final String groupId = project.getGroupId();
+
+        pool = Executors.newFixedThreadPool(1);
 
         int exitCode;
         final String command = "mvn test " + buildProcessedMvnTestOpts(artifactId, groupId);
@@ -101,6 +121,8 @@ public class SuperTestMavenPlugin extends AbstractMojo {
             }
         }
 
+        pool.shutdown();
+
         if (exitCode != 0) {
             System.exit(1);
         }
@@ -121,16 +143,88 @@ public class SuperTestMavenPlugin extends AbstractMojo {
     public int runShellCommand(final String command, final String commandDescriptor)
             throws IOException, InterruptedException {
         getLog().info("Running " + command);
-        Process proc = Runtime.getRuntime().exec(command);
+        ProcessBuilder pb = new ProcessBuilder(getShellCommandAsArray(command));
+        pb.redirectErrorStream(true);
+        Process proc = pb.start();
+        readProcessStdOut(proc, commandDescriptor);
+
+        // we don't want to wait forever, if something breaks
+        boolean exited = proc.waitFor(STDOUT_POST_READ_WAIT_TIMEOUT, TimeUnit.SECONDS);
+
+        if (exited) {
+            return proc.exitValue();
+        } else {
+            return 1;
+        }
+    }
+
+    private String[] getShellCommandAsArray(String command) {
+        // this is what Runtime.getRuntime().exec(...) is doing internally
+        StringTokenizer tokenizer = new StringTokenizer(command);
+        String[] cmdArray = new String[tokenizer.countTokens()];
+        for (int i = 0; tokenizer.hasMoreTokens(); i++) {
+            cmdArray[i] = tokenizer.nextToken();
+        }
+
+        return cmdArray;
+    }
+
+    private void readProcessStdOut(Process proc, String commandDescriptor) {
         InputStream inputStream = proc.getInputStream();
         InputStreamReader inputStreamReader = new InputStreamReader(inputStream);
         BufferedReader bufferedReader = new BufferedReader(inputStreamReader);
-        String line;
-        while ((line = bufferedReader.readLine()) != null) {
-            getLog().info(commandDescriptor + ": " + line);
+        AtomicLong lastOutputTime = new AtomicLong(System.currentTimeMillis());
+        CountDownLatch countDownLatch = new CountDownLatch(1);
+
+        Future<?> task = pool.submit(() -> {
+            String line;
+
+            try {
+                while ((line = bufferedReader.readLine()) != null) {
+                    getLog().info(commandDescriptor + ": " + line);
+                    lastOutputTime.set(System.currentTimeMillis());
+                }
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+
+            // task has finished
+            countDownLatch.countDown();
+        });
+
+        boolean isDone = task.isDone();
+
+        while (!isDone && hasRecentShellActivity(lastOutputTime.get())) {
+            try {
+                isDone = countDownLatch.await(shellNoActivityTimeout, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
         }
-        proc.waitFor();
-        return proc.exitValue();
+
+        try {
+            // task is either done or it timed out, no need to wait much
+            task.get(1, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            if (e instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
+
+            getLog().info(commandDescriptor + ": Read stdout error - " + getStackTrace(e));
+        }
+    }
+
+    private boolean hasRecentShellActivity(long lastTime) {
+        return System.currentTimeMillis() - lastTime
+                < TimeUnit.SECONDS.toMillis(shellNoActivityTimeout);
+    }
+
+    private String getStackTrace(Exception e) {
+        StringWriter stringWriter = new StringWriter();
+        PrintWriter printWriter = new PrintWriter(stringWriter);
+        e.printStackTrace(printWriter);
+
+        return stringWriter.getBuffer().toString();
     }
 
     /**
