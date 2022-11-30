@@ -101,6 +101,12 @@ public class SuperTestMavenPlugin extends AbstractMojo {
             }
 
             final String runCommand = createRerunCommand(classnameToTestcaseList);
+
+            // previous run exited with code > 0, but all tests were actually run successfully
+            if (runCommand == null) {
+                return;
+            }
+
             final StringBuilder rerunCommand = new StringBuilder(runCommand);
             rerunCommand.append(buildProcessedMvnTestOpts(artifactId, groupId));
             if (rerunProfile != null) {
@@ -245,6 +251,7 @@ public class SuperTestMavenPlugin extends AbstractMojo {
      * @return rerunCommand
      */
     public String createRerunCommand(Map<String, List<String>> classnameToTestcaseList) {
+        boolean hasTestsAppended = false;
         final StringBuilder retryRun = new StringBuilder("mvn test");
         retryRun.append(" -Dtest=");
         // TODO: 04/02/2022 replace with Java 8 streams
@@ -252,6 +259,7 @@ public class SuperTestMavenPlugin extends AbstractMojo {
             List<String> failedTestCaseList = classnameToTestcaseList.get(className);
             if (!failedTestCaseList.isEmpty()) {
                 retryRun.append(className);
+                hasTestsAppended = true;
                 if(failedTestCaseList.contains("")) {
                     retryRun.append(",");
                     continue;
@@ -267,6 +275,6 @@ public class SuperTestMavenPlugin extends AbstractMojo {
                 }
             }
         }
-        return retryRun.toString();
+        return hasTestsAppended ? retryRun.toString() : null;
     }
 }
