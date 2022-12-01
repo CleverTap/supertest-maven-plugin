@@ -160,6 +160,7 @@ public class SuperTestMavenPlugin extends AbstractMojo {
         if (exited) {
             return proc.exitValue();
         } else {
+            proc.destroyForcibly();
             return 1;
         }
     }
