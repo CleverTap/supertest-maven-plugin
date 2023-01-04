@@ -8,8 +8,10 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.StringTokenizer;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -17,9 +19,12 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import javax.xml.parsers.ParserConfigurationException;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
@@ -30,6 +35,8 @@ public class SuperTestMavenPlugin extends AbstractMojo {
     // this is the max time to wait in seconds for process termination after the stdout read is
     // finished or terminated
     private static final int STDOUT_POST_READ_WAIT_TIMEOUT = 10;
+    private static final String TEST_REGEX = "-Dtest=(.*?)(\\s|$)";
+    private static final Pattern TEST_REGEX_PATTERN = Pattern.compile(TEST_REGEX);
 
     private ExecutorService pool;
 
@@ -49,8 +56,13 @@ public class SuperTestMavenPlugin extends AbstractMojo {
     @Parameter(property = "shellNoActivityTimeout", readonly = true, defaultValue = "300")
     Integer shellNoActivityTimeout;
 
-    public void execute() throws MojoExecutionException {
+    @Parameter(property = "includes" )
+    List<String> includes;
 
+    @Parameter(property = "excludes" )
+    List<String> excludes;
+
+    public void execute() throws MojoExecutionException, MojoFailureException {
         if (mvnTestOpts == null) {
             mvnTestOpts = "";
         }
@@ -69,6 +81,8 @@ public class SuperTestMavenPlugin extends AbstractMojo {
         final String groupId = project.getGroupId();
 
         pool = Executors.newFixedThreadPool(1);
+        Set<String> allTestClasses = new HashSet<>(new TestListResolver(
+                includes, excludes, getTest(), "target/surefire-reports").scanDirectories());
 
         int exitCode;
         final String command = "mvn test " + buildProcessedMvnTestOpts(artifactId, groupId);
@@ -83,7 +97,7 @@ public class SuperTestMavenPlugin extends AbstractMojo {
         }
 
         // Strip -Dtest=... from the Maven opts if specified, since these were valid for the very first run only.
-        mvnTestOpts = mvnTestOpts.replaceAll("-Dtest=(.*?)(\\s|$)", "");
+        mvnTestOpts = mvnTestOpts.replaceAll(TEST_REGEX, "");
 
         for (int retryRunNumber = 1; retryRunNumber <= retryRunCount; retryRunNumber++) {
             final File[] xmlFileList = getXmlFileList(baseDir);
@@ -97,10 +111,11 @@ public class SuperTestMavenPlugin extends AbstractMojo {
                     throw new MojoExecutionException(
                             "Failed to parse surefire report! file=" + file, e);
                 }
-                classnameToTestcaseList.put(runResult.getClassName(), runResult.getTestCases());
+                classnameToTestcaseList.put(
+                        runResult.getClassName(), runResult.getFailedTestCases());
             }
 
-            final String runCommand = createRerunCommand(classnameToTestcaseList);
+            final String runCommand = createRerunCommand(allTestClasses, classnameToTestcaseList);
 
             // previous run exited with code > 0, but all tests were actually run successfully
             if (runCommand == null) {
@@ -132,6 +147,11 @@ public class SuperTestMavenPlugin extends AbstractMojo {
         if (exitCode != 0) {
             System.exit(1);
         }
+    }
+
+    public String getTest() {
+        Matcher matcher = TEST_REGEX_PATTERN.matcher(mvnTestOpts);
+        return matcher.find() ? matcher.group(1) : "";
     }
 
     private StringBuilder buildProcessedMvnTestOpts(String artifactId, String groupId) {
@@ -251,13 +271,21 @@ public class SuperTestMavenPlugin extends AbstractMojo {
      * @param classnameToTestcaseList map of classname and list of failed test cases
      * @return rerunCommand
      */
-    public String createRerunCommand(Map<String, List<String>> classnameToTestcaseList) {
+    public String createRerunCommand(
+            Set<String> allTestClasses, Map<String, List<String>> classnameToTestcaseList) {
         boolean hasTestsAppended = false;
         final StringBuilder retryRun = new StringBuilder("mvn test");
+        Set<String> incompleteTests = new HashSet<>(allTestClasses);
+
         retryRun.append(" -Dtest=");
+        int emptyRetryRunLen = retryRun.length();
+
         // TODO: 04/02/2022 replace with Java 8 streams
         for (String className : classnameToTestcaseList.keySet()) {
+            // if a test class is in the surefire report, it means that all its tests were executed
+            incompleteTests.remove(className);
             List<String> failedTestCaseList = classnameToTestcaseList.get(className);
+
             if (!failedTestCaseList.isEmpty()) {
                 retryRun.append(className);
                 hasTestsAppended = true;
@@ -274,8 +302,20 @@ public class SuperTestMavenPlugin extends AbstractMojo {
                         retryRun.append("+");
                     }
                 }
+            } else {
+                // passing tests will not be re-run anymore
+                allTestClasses.remove(className);
             }
         }
+
+        if (retryRun.length() != emptyRetryRunLen
+                && retryRun.charAt(retryRun.length() - 1) != ','
+                && !incompleteTests.isEmpty()) {
+            retryRun.append(",");
+        }
+
+        retryRun.append(String.join(",", incompleteTests));
+
         return hasTestsAppended ? retryRun.toString() : null;
     }
 }

@@ -1,5 +1,7 @@
 package com.clevertap.maven.plugins.supertest;
 
+import java.util.HashSet;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.xml.sax.SAXException;
 
@@ -16,7 +18,8 @@ import static org.junit.Assert.assertTrue;
 
 class SuperTestMavenPluginTest {
     @Test
-    void createRerunCommandTest() throws IOException, ParserConfigurationException, SAXException, URISyntaxException {
+    void createRerunCommandTest()
+            throws IOException, ParserConfigurationException, SAXException, URISyntaxException {
         SuperTestMavenPlugin bv = new SuperTestMavenPlugin();
         ClassLoader classLoader = getClass().getClassLoader();
         URL FooTest = classLoader.getResource("FooTest.xml");
@@ -25,10 +28,16 @@ class SuperTestMavenPluginTest {
         final RunResult BarTestResult = new SurefireReportParser(new File(BarTest.toURI())).parse();
 
         final Map<String, List<String>> classnameToTestcaseList = new HashMap<>();
-        classnameToTestcaseList.put(FooTestResult.getClassName(), FooTestResult.getTestCases());
-        classnameToTestcaseList.put(BarTestResult.getClassName(), BarTestResult.getTestCases());
+        classnameToTestcaseList.put(
+                FooTestResult.getClassName(), FooTestResult.getFailedTestCases());
+        classnameToTestcaseList.put(
+                BarTestResult.getClassName(), BarTestResult.getFailedTestCases());
 
-        String rerunCommand = bv.createRerunCommand(classnameToTestcaseList);
+        Set<String> allTestClasses = new HashSet<>();
+        allTestClasses.add(FooTestResult.getClassName());
+        allTestClasses.add(BarTestResult.getClassName());
+
+        String rerunCommand = bv.createRerunCommand(allTestClasses, classnameToTestcaseList);
         System.out.println(rerunCommand);
         // added additional condition because hashset can give any order
         assertTrue("mvn test -Dtest=com.example.FooTest,com.example.BarTest#barTest1*+barTest2*,".equals(rerunCommand)
