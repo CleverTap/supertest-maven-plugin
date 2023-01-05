@@ -82,7 +82,14 @@ public class SuperTestMavenPlugin extends AbstractMojo {
 
         pool = Executors.newFixedThreadPool(1);
         Set<String> allTestClasses = new HashSet<>(new TestListResolver(
-                includes, excludes, getTest(), "target/surefire-reports").scanDirectories());
+                includes,
+                excludes,
+                getTest(),
+                new File(baseDir, "target/test-classes").getAbsolutePath()).scanDirectories());
+
+        getLog().debug("Test classes dir: "
+                + new File(baseDir, "target/test-classes").getAbsolutePath());
+        getLog().debug("Test classes found: " + String.join(",", allTestClasses));
 
         int exitCode;
         final String command = "mvn test " + buildProcessedMvnTestOpts(artifactId, groupId);
