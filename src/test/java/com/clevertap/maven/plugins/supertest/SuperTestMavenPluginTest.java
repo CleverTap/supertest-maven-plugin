@@ -1,40 +1,41 @@
 package com.clevertap.maven.plugins.supertest;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.stream.Collectors;
-import org.apache.commons.lang3.tuple.Pair;
-import org.junit.jupiter.api.Test;
-import org.xml.sax.SAXException;
-
-import javax.xml.parsers.ParserConfigurationException;
 import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+import javax.xml.parsers.ParserConfigurationException;
+import org.apache.commons.lang3.tuple.Pair;
+import org.junit.jupiter.api.Test;
+import org.xml.sax.SAXException;
 
 class SuperTestMavenPluginTest {
     @Test
     void createRerunCommandTest()
             throws IOException, ParserConfigurationException, SAXException, URISyntaxException {
-        SuperTestMavenPlugin bv = new SuperTestMavenPlugin();
+        SuperTestMavenPlugin plugin = new SuperTestMavenPlugin();
         ClassLoader classLoader = getClass().getClassLoader();
         URL FooTest = classLoader.getResource("FooTest.xml");
         URL BarTest = classLoader.getResource("BarTest.xml");
         final RunResult FooTestResult = new SurefireReportParser(new File(FooTest.toURI())).parse();
         final RunResult BarTestResult = new SurefireReportParser(new File(BarTest.toURI())).parse();
 
-        final Map<String, List<String>> classnameToTestcaseList = new HashMap<>();
-        classnameToTestcaseList.put(
+        final Map<String, List<String>> classNameToTestCaseList = new HashMap<>();
+        classNameToTestCaseList.put(
                 FooTestResult.getClassName(), FooTestResult.getFailedTestCases());
-        classnameToTestcaseList.put(
+        classNameToTestCaseList.put(
                 BarTestResult.getClassName(), BarTestResult.getFailedTestCases());
 
         Set<String> allTestClasses = new HashSet<>();
@@ -43,7 +44,7 @@ class SuperTestMavenPluginTest {
         allTestClasses.add("com.example.NotRun1");
         allTestClasses.add("com.example.NotRun2");
 
-        String rerunCommand = bv.createRerunCommand(allTestClasses, classnameToTestcaseList);
+        String rerunCommand = plugin.createRerunCommand(allTestClasses, classNameToTestCaseList);
         assertTrue(rerunCommand.startsWith("mvn test -Dtest="));
         assertEquals(
                 getRunCommandTestValue(
@@ -51,6 +52,36 @@ class SuperTestMavenPluginTest {
                                 + "com.example.BarTest#barTest1*+barTest2*,"
                                 + "com.example.NotRun1,com.example.NotRun2"),
                 getRunCommandTestValue(rerunCommand));
+    }
+
+    @Test
+    void testCreateRerunCommandWhenNoTestFailedButSomeDidNotComplete() {
+        SuperTestMavenPlugin plugin = new SuperTestMavenPlugin();
+
+        final Map<String, List<String>> classNameToTestCaseList = new HashMap<>();
+
+        Set<String> allTestClasses = new HashSet<>();
+        allTestClasses.add("com.example.Test");
+
+        String rerunCommand = plugin.createRerunCommand(allTestClasses, classNameToTestCaseList);
+        assertTrue(rerunCommand.startsWith("mvn test -Dtest="));
+        assertEquals(
+                getRunCommandTestValue("mvn test -Dtest=com.example.Test"),
+                getRunCommandTestValue(rerunCommand));
+    }
+
+    @Test
+    void testCreateRerunCommandWhenAllTestsArePassing() {
+        SuperTestMavenPlugin plugin = new SuperTestMavenPlugin();
+
+        final Map<String, List<String>> classNameToTestCaseList = new HashMap<>();
+        classNameToTestCaseList.put("com.example.Test", new ArrayList<>());
+
+        Set<String> allTestClasses = new HashSet<>();
+        allTestClasses.add("com.example.Test");
+
+        String rerunCommand = plugin.createRerunCommand(allTestClasses, classNameToTestCaseList);
+        assertNull(rerunCommand);
     }
 
     /**

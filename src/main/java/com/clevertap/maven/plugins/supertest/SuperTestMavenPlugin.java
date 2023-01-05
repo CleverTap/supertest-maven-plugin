@@ -277,7 +277,6 @@ public class SuperTestMavenPlugin extends AbstractMojo {
      */
     public String createRerunCommand(
             Set<String> allTestClasses, Map<String, List<String>> classnameToTestcaseList) {
-        boolean hasTestsAppended = false;
         final StringBuilder retryRun = new StringBuilder("mvn test");
         Set<String> incompleteTests = new HashSet<>(allTestClasses);
 
@@ -291,21 +290,7 @@ public class SuperTestMavenPlugin extends AbstractMojo {
             List<String> failedTestCaseList = classnameToTestcaseList.get(className);
 
             if (!failedTestCaseList.isEmpty()) {
-                retryRun.append(className);
-                hasTestsAppended = true;
-                if(failedTestCaseList.contains("")) {
-                    retryRun.append(",");
-                    continue;
-                }
-                retryRun.append("#");
-                for (int i = 0; i < failedTestCaseList.size(); i++) {
-                    retryRun.append(failedTestCaseList.get(i)).append("*");
-                    if (i == failedTestCaseList.size() - 1) {
-                        retryRun.append(",");
-                    } else {
-                        retryRun.append("+");
-                    }
-                }
+                appendFailedTestCases(className, failedTestCaseList, retryRun);
             } else {
                 // passing tests will not be re-run anymore
                 allTestClasses.remove(className);
@@ -320,6 +305,28 @@ public class SuperTestMavenPlugin extends AbstractMojo {
 
         retryRun.append(String.join(",", incompleteTests));
 
-        return hasTestsAppended ? retryRun.toString() : null;
+        return retryRun.length() != emptyRetryRunLen ? retryRun.toString() : null;
+    }
+
+    private void appendFailedTestCases(
+            String className, List<String> failedTestCaseList, StringBuilder retryRun) {
+        retryRun.append(className);
+
+        if (failedTestCaseList.contains("")) {
+            retryRun.append(",");
+            return;
+        }
+
+        retryRun.append("#");
+
+        for (int i = 0; i < failedTestCaseList.size(); i++) {
+            retryRun.append(failedTestCaseList.get(i)).append("*");
+
+            if (i == failedTestCaseList.size() - 1) {
+                retryRun.append(",");
+            } else {
+                retryRun.append("+");
+            }
+        }
     }
 }
