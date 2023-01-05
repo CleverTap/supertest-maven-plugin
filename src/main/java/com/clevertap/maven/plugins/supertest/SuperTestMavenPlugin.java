@@ -150,6 +150,10 @@ public class SuperTestMavenPlugin extends AbstractMojo {
     }
 
     public String getTest() {
+        if (mvnTestOpts == null) {
+            return "";
+        }
+
         Matcher matcher = TEST_REGEX_PATTERN.matcher(mvnTestOpts);
         return matcher.find() ? matcher.group(1) : "";
     }
