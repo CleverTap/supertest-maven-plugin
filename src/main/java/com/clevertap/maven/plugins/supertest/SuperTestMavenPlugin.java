@@ -81,14 +81,13 @@ public class SuperTestMavenPlugin extends AbstractMojo {
         final String groupId = project.getGroupId();
 
         pool = Executors.newFixedThreadPool(1);
-        String testClassesDir = new File(
-                baseDir, project.getBuild().getTestOutputDirectory()).getAbsolutePath();
+        String testClassesDir = project.getBuild().getTestOutputDirectory();
 
         Set<String> allTestClasses = new HashSet<>(
                 new TestListResolver(
                         includes, excludes, getTest(), testClassesDir).scanDirectories());
 
-        getLog().debug("Test classes dir: " + testClassesDir);
+        getLog().info("Test classes dir: " + testClassesDir);
         getLog().debug("Test classes found: " + String.join(",", allTestClasses));
 
         int exitCode;
