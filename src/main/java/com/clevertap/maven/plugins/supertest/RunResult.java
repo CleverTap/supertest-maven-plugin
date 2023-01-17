@@ -5,20 +5,19 @@ import java.util.List;
 
 public class RunResult {
 
-    final String className;
-    final List<String> testCases;
+    private final String className;
+    private final List<String> failedTestCases = new ArrayList<>();
 
     public RunResult(String className) {
         this.className = className;
-        this.testCases = new ArrayList<>();
     }
 
-    public void addTestCase(final String testCase) {
-        testCases.add(testCase);
+    public void addFailedTestCase(final String testCase) {
+        failedTestCases.add(testCase);
     }
 
-    public List<String> getTestCases() {
-        return testCases;
+    public List<String> getFailedTestCases() {
+        return failedTestCases;
     }
 
     public String getClassName() {

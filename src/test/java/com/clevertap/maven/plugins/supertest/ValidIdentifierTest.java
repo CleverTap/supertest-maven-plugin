@@ -1,5 +1,7 @@
 package com.clevertap.maven.plugins.supertest;
 
+import java.util.HashSet;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.xml.sax.SAXException;
 
@@ -16,16 +18,22 @@ import static org.junit.Assert.assertEquals;
 
 class ValidIdentifierTest {
     @Test
-    void testValidIdentifier() throws IOException, ParserConfigurationException, SAXException, URISyntaxException {
+    void testValidIdentifier()
+            throws IOException, ParserConfigurationException, SAXException, URISyntaxException {
         SuperTestMavenPlugin bv = new SuperTestMavenPlugin();
         ClassLoader classLoader = getClass().getClassLoader();
         URL validIdentifierTest = classLoader.getResource("ValidIdentifierTest.xml");
-        final RunResult ValidIdentifierTestResult = new SurefireReportParser(new File(validIdentifierTest.toURI())).parse();
+        final RunResult validIdentifierTestResult =
+                new SurefireReportParser(new File(validIdentifierTest.toURI())).parse();
+        Set<String> allTestClasses = new HashSet<>();
+        allTestClasses.add("com.validIdentifierTest");
 
         final Map<String, List<String>> classnameToTestcaseList = new HashMap<>();
-        classnameToTestcaseList.put(ValidIdentifierTestResult.getClassName(), ValidIdentifierTestResult.getTestCases());
+        classnameToTestcaseList.put(
+                validIdentifierTestResult.getClassName(),
+                validIdentifierTestResult.getFailedTestCases());
 
-        String rerunCommand = bv.createRerunCommand(classnameToTestcaseList);
+        String rerunCommand = bv.createRerunCommand(allTestClasses, classnameToTestcaseList);
         System.out.println(rerunCommand);
         assertEquals("mvn test -Dtest=com.validIdentifierTest#fooTest*,", rerunCommand);
     }

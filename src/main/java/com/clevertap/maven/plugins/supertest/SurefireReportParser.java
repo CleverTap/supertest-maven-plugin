@@ -50,7 +50,7 @@ public class SurefireReportParser {
                 uniqueNames.add(name);
             }
         }
-        uniqueNames.forEach(result::addTestCase);
+        uniqueNames.forEach(result::addFailedTestCase);
         return result;
     }
 
