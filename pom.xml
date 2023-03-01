@@ -7,7 +7,7 @@
     <groupId>com.clevertap</groupId>
     <artifactId>supertest-maven-plugin</artifactId>
     <packaging>maven-plugin</packaging>
-    <version>1.12</version>
+    <version>1.13</version>
     <description>A wrapper for Maven's Surefire Plugin, with advanced re-run capabilities.
     </description>
     <name>supertest-maven-plugin</name>
@@ -58,6 +58,13 @@
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <version>4.12</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <version>4.11.0</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

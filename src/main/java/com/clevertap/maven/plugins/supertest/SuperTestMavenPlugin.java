@@ -1,5 +1,6 @@
 package com.clevertap.maven.plugins.supertest;
 
+import com.clevertap.maven.plugins.supertest.util.ProcessHelper;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
@@ -38,6 +39,8 @@ public class SuperTestMavenPlugin extends AbstractMojo {
     private static final String TEST_REGEX = "-Dtest=(.*?)(\\s|$)";
     private static final Pattern TEST_REGEX_PATTERN = Pattern.compile(TEST_REGEX);
 
+    private final ProcessHelper processHelper = new ProcessHelper();
+
     private ExecutorService pool;
 
     @Parameter(defaultValue = "${project}", readonly = true)
@@ -55,6 +58,9 @@ public class SuperTestMavenPlugin extends AbstractMojo {
     // in seconds
     @Parameter(property = "shellNoActivityTimeout", readonly = true, defaultValue = "300")
     Integer shellNoActivityTimeout;
+
+    @Parameter(property = "gracefulShutdownTimeout", readonly = true, defaultValue = "60")
+    Integer gracefulShutdownTimeout;
 
     @Parameter(property = "includes" )
     List<String> includes;
@@ -190,8 +196,48 @@ public class SuperTestMavenPlugin extends AbstractMojo {
         if (exited) {
             return proc.exitValue();
         } else {
-            proc.destroyForcibly();
+            shutdown(proc);
+
             return 1;
+        }
+    }
+
+    private void shutdown(Process proc) throws InterruptedException {
+        // tries to gracefully shutdown first
+        gracefullyShutdown(proc);
+
+        if (!proc.waitFor(gracefulShutdownTimeout, TimeUnit.SECONDS)) {
+            // if the process is still alive after the graceful period is over,
+            // kill it forcibly; this may have some undesired effects (e.g. test coverage
+            // info might not be flushed to disk), but we better kill it, than waiting forever
+            getLog().info("Process did not shutdown within " + gracefulShutdownTimeout
+                    + " sec, killing it forcibly now...");
+            proc.destroyForcibly();
+        } else {
+            getLog().info("Process shutdown successfully upon time out.");
+        }
+    }
+
+    private void gracefullyShutdown(Process proc) {
+        if (processHelper.isUnixProcess(proc)) {
+            // Calling proc.destroy() does not seem to properly propagate SIGTERM to
+            // the child processes. As a result killing the maven process this way does not
+            // make the forked JVMs write coverage data to disk. This is the reason why
+            // we find the process leaves and send them a SIGTERM signal.
+            try {
+                List<Long> leaves = processHelper.getLeaves(processHelper.getPid(proc));
+
+                for (long pid : leaves) {
+                    processHelper.sendSIGTERM(pid);
+                }
+            } catch (Exception e) {
+                getLog().error("Error while gracefully shutting down.", e);
+                proc.destroy();
+            }
+        } else {
+            // getLeaves(...) is not supported on non-Unix systems, that's why we just destroy
+            // with all trade-offs coming from that (see above)
+            proc.destroy();
         }
     }
 
