@@ -33,6 +33,7 @@ import org.xml.sax.SAXException;
 
 @Mojo(name = "supertest")
 public class SuperTestMavenPlugin extends AbstractMojo {
+
     // this is the max time to wait in seconds for process termination after the stdout read is
     // finished or terminated
     private static final int STDOUT_POST_READ_WAIT_TIMEOUT = 10;
@@ -45,6 +46,10 @@ public class SuperTestMavenPlugin extends AbstractMojo {
 
     @Parameter(defaultValue = "${project}", readonly = true)
     MavenProject project;
+
+
+    @Parameter(property = "mavenCommand", defaultValue = "mvn", readonly = true)
+    String mavenCommand = "mvn";
 
     @Parameter(property = "mvnTestOpts", readonly = true)
     String mvnTestOpts;
@@ -97,7 +102,8 @@ public class SuperTestMavenPlugin extends AbstractMojo {
         getLog().debug("Test classes found: " + String.join(",", allTestClasses));
 
         int exitCode;
-        final String command = "mvn test " + buildProcessedMvnTestOpts(artifactId, groupId);
+        final String command =
+                mavenCommand + " test " + buildProcessedMvnTestOpts(artifactId, groupId);
         try {
             exitCode = runShellCommand(command, "supertest run#1");
         } catch (IOException | InterruptedException e) {
@@ -329,7 +335,7 @@ public class SuperTestMavenPlugin extends AbstractMojo {
      */
     public String createRerunCommand(
             Set<String> allTestClasses, Map<String, List<String>> classnameToTestcaseList) {
-        final StringBuilder retryRun = new StringBuilder("mvn test");
+        final StringBuilder retryRun = new StringBuilder(mavenCommand + " test");
         Set<String> incompleteTests = new HashSet<>(allTestClasses);
 
         retryRun.append(" -Dtest=");
@@ -364,8 +370,8 @@ public class SuperTestMavenPlugin extends AbstractMojo {
             String className, List<String> failedTestCaseList, StringBuilder retryRun) {
         retryRun.append(className);
 
-        if (failedTestCaseList.contains("")) {
-            retryRun.append(",");
+                if (failedTestCaseList.contains("")) {
+                    retryRun.append(",");
             return;
         }
 
