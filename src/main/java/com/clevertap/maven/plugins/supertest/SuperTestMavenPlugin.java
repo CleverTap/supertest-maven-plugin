@@ -120,6 +120,7 @@ public class SuperTestMavenPlugin extends AbstractMojo {
         for (int retryRunNumber = 1; retryRunNumber <= retryRunCount; retryRunNumber++) {
             final File[] xmlFileList = getXmlFileList(baseDir);
             final Map<String, List<String>> classnameToTestcaseList = new HashMap<>();
+            int testsToBeRetried = 0;
             for (File file : xmlFileList) {
                 final SurefireReportParser parser = new SurefireReportParser(file);
                 final RunResult runResult;
@@ -131,6 +132,11 @@ public class SuperTestMavenPlugin extends AbstractMojo {
                 }
                 classnameToTestcaseList.put(
                         runResult.getClassName(), runResult.getFailedTestCases());
+                testsToBeRetried += runResult.getFailedTestCases().size();
+            }
+
+            if (testsToBeRetried == 0) {
+                System.exit(1);
             }
 
             final String runCommand = createRerunCommand(allTestClasses, classnameToTestcaseList);
