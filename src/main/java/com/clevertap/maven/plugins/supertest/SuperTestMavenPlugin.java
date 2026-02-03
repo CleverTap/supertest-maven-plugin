@@ -363,6 +363,12 @@ public class SuperTestMavenPlugin extends AbstractMojo {
 
         retryRun.append(String.join(",", incompleteTests));
 
+        // Strip trailing comma if present (before maven opts are appended by caller)
+        if (retryRun.length() > emptyRetryRunLen
+                && retryRun.charAt(retryRun.length() - 1) == ',') {
+            retryRun.deleteCharAt(retryRun.length() - 1);
+        }
+
         return retryRun.length() != emptyRetryRunLen ? retryRun.toString() : null;
     }
 
