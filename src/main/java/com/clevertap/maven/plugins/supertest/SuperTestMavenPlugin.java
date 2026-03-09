@@ -341,17 +341,33 @@ public class SuperTestMavenPlugin extends AbstractMojo {
         retryRun.append(" -Dtest=");
         int emptyRetryRunLen = retryRun.length();
 
+        // Track outer classes that have at least one nested class with failures,
+        // so we don't prematurely remove them from allTestClasses
+        Set<String> outerClassesWithFailures = new HashSet<>();
+
         // TODO: 04/02/2022 replace with Java 8 streams
         for (String className : classnameToTestcaseList.keySet()) {
+            // For nested/inner test classes (e.g., com.example.OuterTest$InnerTest),
+            // resolve to the outermost class name since that's what surefire's -Dtest uses
+            String outerClassName = getOuterClassName(className);
+
             // if a test class is in the surefire report, it means that all its tests were executed
-            incompleteTests.remove(className);
+            incompleteTests.remove(outerClassName);
             List<String> failedTestCaseList = classnameToTestcaseList.get(className);
 
             if (!failedTestCaseList.isEmpty()) {
-                appendFailedTestCases(className, failedTestCaseList, retryRun);
-            } else {
-                // passing tests will not be re-run anymore
-                allTestClasses.remove(className);
+                appendFailedTestCases(outerClassName, failedTestCaseList, retryRun);
+                outerClassesWithFailures.add(outerClassName);
+            }
+        }
+
+        // Remove passing test classes from allTestClasses, but only if none of their
+        // nested classes had failures
+        for (String className : classnameToTestcaseList.keySet()) {
+            String outerClassName = getOuterClassName(className);
+            List<String> failedTestCaseList = classnameToTestcaseList.get(className);
+            if (failedTestCaseList.isEmpty() && !outerClassesWithFailures.contains(outerClassName)) {
+                allTestClasses.remove(outerClassName);
             }
         }
 
@@ -364,6 +380,15 @@ public class SuperTestMavenPlugin extends AbstractMojo {
         retryRun.append(String.join(",", incompleteTests));
 
         return retryRun.length() != emptyRetryRunLen ? retryRun.toString() : null;
+    }
+
+    /**
+     * Returns the outermost class name for nested/inner test classes.
+     * E.g., "com.example.OuterTest$InnerTest$DeepNested" -> "com.example.OuterTest"
+     */
+    String getOuterClassName(String className) {
+        int dollarIndex = className.indexOf('$');
+        return dollarIndex > 0 ? className.substring(0, dollarIndex) : className;
     }
 
     private void appendFailedTestCases(
