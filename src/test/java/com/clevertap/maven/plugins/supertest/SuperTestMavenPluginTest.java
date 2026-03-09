@@ -137,11 +137,11 @@ class SuperTestMavenPluginTest {
 
         String rerunCommand = plugin.createRerunCommand(allTestClasses, classNameToTestCaseList);
 
-        // The retry should use the outer class name, not the nested class name
+        // The retry should use the full nested class name (with $) so surefire can find the method
         assertTrue(rerunCommand.startsWith("mvn test -Dtest="));
         assertEquals(
                 getRunCommandTestValue(
-                        "mvn test -Dtest=com.example.OuterTest#innerTest1*"),
+                        "mvn test -Dtest=com.example.OuterTest$InnerTest#innerTest1*"),
                 getRunCommandTestValue(rerunCommand));
     }
 

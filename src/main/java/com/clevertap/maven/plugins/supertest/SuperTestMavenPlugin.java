@@ -348,7 +348,8 @@ public class SuperTestMavenPlugin extends AbstractMojo {
         // TODO: 04/02/2022 replace with Java 8 streams
         for (String className : classnameToTestcaseList.keySet()) {
             // For nested/inner test classes (e.g., com.example.OuterTest$InnerTest),
-            // resolve to the outermost class name since that's what surefire's -Dtest uses
+            // resolve to the outermost class name for tracking in allTestClasses/incompleteTests
+            // (since TestListResolver excludes nested classes from allTestClasses)
             String outerClassName = getOuterClassName(className);
 
             // if a test class is in the surefire report, it means that all its tests were executed
@@ -356,7 +357,9 @@ public class SuperTestMavenPlugin extends AbstractMojo {
             List<String> failedTestCaseList = classnameToTestcaseList.get(className);
 
             if (!failedTestCaseList.isEmpty()) {
-                appendFailedTestCases(outerClassName, failedTestCaseList, retryRun);
+                // Use the original class name (including $NestedClass) in the -Dtest parameter,
+                // since surefire needs the full nested class name to locate the test methods
+                appendFailedTestCases(className, failedTestCaseList, retryRun);
                 outerClassesWithFailures.add(outerClassName);
             }
         }
