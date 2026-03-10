@@ -106,6 +106,52 @@ class SuperTestMavenPluginTest {
     }
 
     @Test
+    void createRerunCommandWithNestedTestClassFailure()
+            throws IOException, ParserConfigurationException, SAXException, URISyntaxException {
+        SuperTestMavenPlugin plugin = new SuperTestMavenPlugin();
+        ClassLoader classLoader = getClass().getClassLoader();
+
+        // Surefire 3.x puts nested class tests in the outer class XML,
+        // with a different classname attribute (display name instead of FQCN)
+        URL nestedInnerTest = classLoader.getResource("NestedInnerTest.xml");
+
+        final RunResult result =
+                new SurefireReportParser(new File(nestedInnerTest.toURI())).parse();
+
+        // The testsuite name is the outer class
+        assertEquals("com.example.OuterTest", result.getClassName());
+        // Nested class failure should trigger a full class rerun (empty string marker)
+        assertEquals(1, result.getFailedTestCases().size());
+        assertTrue(result.getFailedTestCases().contains(""));
+
+        final Map<String, List<String>> classNameToTestCaseList = new HashMap<>();
+        classNameToTestCaseList.put(result.getClassName(), result.getFailedTestCases());
+
+        Set<String> allTestClasses = new HashSet<>();
+        allTestClasses.add("com.example.OuterTest");
+
+        String rerunCommand = plugin.createRerunCommand(allTestClasses, classNameToTestCaseList);
+
+        // When a nested class has failures, the entire outer class should be rerun
+        // without method filtering (no #method suffix)
+        assertTrue(rerunCommand.startsWith("mvn test -Dtest="));
+        assertEquals(
+                getRunCommandTestValue("mvn test -Dtest=com.example.OuterTest"),
+                getRunCommandTestValue(rerunCommand));
+    }
+
+    @Test
+    void testGetOuterClassName() {
+        SuperTestMavenPlugin plugin = new SuperTestMavenPlugin();
+        assertEquals("com.example.OuterTest",
+                plugin.getOuterClassName("com.example.OuterTest$InnerTest"));
+        assertEquals("com.example.OuterTest",
+                plugin.getOuterClassName("com.example.OuterTest$InnerTest$DeepNested"));
+        assertEquals("com.example.SimpleTest",
+                plugin.getOuterClassName("com.example.SimpleTest"));
+    }
+
+    @Test
     void testGetTestWhenProvided() {
         SuperTestMavenPlugin plugin = new SuperTestMavenPlugin();
         plugin.mvnTestOpts = "-PdontReuseForks -Dtest=**PowerMock** jacoco:report";

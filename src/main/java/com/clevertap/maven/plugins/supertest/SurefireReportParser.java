@@ -37,19 +37,38 @@ public class SurefireReportParser {
         doc.getDocumentElement().normalize();
         final Node testsuite = doc.getElementsByTagName("testsuite").item(0);
 
-        final RunResult result = new RunResult(((Element) testsuite).getAttribute("name"));
+        final String suiteClassName = ((Element) testsuite).getAttribute("name");
+        final RunResult result = new RunResult(suiteClassName);
         final NodeList testCaseList = doc.getElementsByTagName("testcase");
+
+        boolean hasNestedClassFailure = false;
 
         for (int i = 0; i < testCaseList.getLength(); i++) {
             Node testCase = testCaseList.item(i);
-            Node n = testCase.getChildNodes()
-                    .item(1); // TODO: 04/02/2022 will fail if retry count is 0
-            if (testCase.hasChildNodes() && failureTagsList.contains(n.getNodeName())) {
+            Node n = testCase.getChildNodes().item(1);
+            if (testCase.hasChildNodes() && n != null && failureTagsList.contains(n.getNodeName())) {
                 Element testCaseElement = (Element) testCase;
-                String name = getLegalIdentifierName(testCaseElement.getAttribute("name"));
-                uniqueNames.add(name);
+                String testClassname = testCaseElement.getAttribute("classname");
+
+                // Surefire 3.x reports @Nested class tests under the outer class XML
+                // with the @DisplayName as classname. Since -Dtest cannot target methods
+                // inside nested classes, we rerun the entire outer class.
+                if (!testClassname.isEmpty() && !testClassname.equals(suiteClassName)) {
+                    hasNestedClassFailure = true;
+                } else {
+                    String name = getLegalIdentifierName(testCaseElement.getAttribute("name"));
+                    uniqueNames.add(name);
+                }
             }
         }
+
+        // Empty string signals createRerunCommand to rerun the entire class
+        // without method filtering
+        if (hasNestedClassFailure) {
+            uniqueNames.clear();
+            uniqueNames.add("");
+        }
+
         uniqueNames.forEach(result::addFailedTestCase);
         return result;
     }
