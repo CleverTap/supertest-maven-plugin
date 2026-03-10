@@ -45,15 +45,11 @@ public class SurefireReportParser {
 
         for (int i = 0; i < testCaseList.getLength(); i++) {
             Node testCase = testCaseList.item(i);
-            Node n = testCase.getChildNodes()
-                    .item(1); // TODO: 04/02/2022 will fail if retry count is 0
+            Node n = testCase.getChildNodes().item(1);
             if (testCase.hasChildNodes() && n != null && failureTagsList.contains(n.getNodeName())) {
                 Element testCaseElement = (Element) testCase;
                 String testClassname = testCaseElement.getAttribute("classname");
 
-                // If the testcase classname differs from the testsuite name, the test
-                // belongs to a nested class. Surefire's -Dtest filter cannot target methods
-                // inside nested classes, so we must rerun the entire outer class.
                 if (!testClassname.isEmpty() && !testClassname.equals(suiteClassName)) {
                     hasNestedClassFailure = true;
                 } else {
@@ -64,7 +60,6 @@ public class SurefireReportParser {
         }
 
         if (hasNestedClassFailure) {
-            // Empty string signals to rerun the entire class without method filtering
             uniqueNames.clear();
             uniqueNames.add("");
         }
