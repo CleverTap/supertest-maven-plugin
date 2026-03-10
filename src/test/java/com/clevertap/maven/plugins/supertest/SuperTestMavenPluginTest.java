@@ -111,37 +111,32 @@ class SuperTestMavenPluginTest {
         SuperTestMavenPlugin plugin = new SuperTestMavenPlugin();
         ClassLoader classLoader = getClass().getClassLoader();
 
-        // Nested inner class has a failure
+        // Surefire 3.x puts nested class tests in the outer class XML,
+        // with a different classname attribute (display name instead of FQCN)
         URL nestedInnerTest = classLoader.getResource("NestedInnerTest.xml");
-        // Outer class has all passing tests
-        URL outerTest = classLoader.getResource("OuterTest.xml");
 
-        final RunResult nestedResult =
+        final RunResult result =
                 new SurefireReportParser(new File(nestedInnerTest.toURI())).parse();
-        final RunResult outerResult =
-                new SurefireReportParser(new File(outerTest.toURI())).parse();
 
-        // The nested class report has className "com.example.OuterTest$InnerTest"
-        assertEquals("com.example.OuterTest$InnerTest", nestedResult.getClassName());
-        assertEquals(1, nestedResult.getFailedTestCases().size());
+        // The testsuite name is the outer class
+        assertEquals("com.example.OuterTest", result.getClassName());
+        // Nested class failure should trigger a full class rerun (empty string marker)
+        assertEquals(1, result.getFailedTestCases().size());
+        assertTrue(result.getFailedTestCases().contains(""));
 
         final Map<String, List<String>> classNameToTestCaseList = new HashMap<>();
-        classNameToTestCaseList.put(
-                nestedResult.getClassName(), nestedResult.getFailedTestCases());
-        classNameToTestCaseList.put(
-                outerResult.getClassName(), outerResult.getFailedTestCases());
+        classNameToTestCaseList.put(result.getClassName(), result.getFailedTestCases());
 
-        // allTestClasses only has the outer class (nested classes are excluded by TestListResolver)
         Set<String> allTestClasses = new HashSet<>();
         allTestClasses.add("com.example.OuterTest");
 
         String rerunCommand = plugin.createRerunCommand(allTestClasses, classNameToTestCaseList);
 
-        // The retry should use the full nested class name (with $) so surefire can find the method
+        // When a nested class has failures, the entire outer class should be rerun
+        // without method filtering (no #method suffix)
         assertTrue(rerunCommand.startsWith("mvn test -Dtest="));
         assertEquals(
-                getRunCommandTestValue(
-                        "mvn test -Dtest=com.example.OuterTest$InnerTest#innerTest1*"),
+                getRunCommandTestValue("mvn test -Dtest=com.example.OuterTest"),
                 getRunCommandTestValue(rerunCommand));
     }
 
