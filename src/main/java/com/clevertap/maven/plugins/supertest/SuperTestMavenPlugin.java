@@ -341,9 +341,13 @@ public class SuperTestMavenPlugin extends AbstractMojo {
         retryRun.append(" -Dtest=");
         int emptyRetryRunLen = retryRun.length();
 
+        // Track which outer classes have failures to avoid removing them
+        // from allTestClasses when a passing nested class report is processed
         Set<String> outerClassesWithFailures = new HashSet<>();
 
         for (String className : classnameToTestcaseList.keySet()) {
+            // Resolve nested class names (e.g. OuterTest$Inner) to outer class,
+            // since TestListResolver excludes nested classes from allTestClasses
             String outerClassName = getOuterClassName(className);
             incompleteTests.remove(outerClassName);
             List<String> failedTestCaseList = classnameToTestcaseList.get(className);
@@ -354,6 +358,7 @@ public class SuperTestMavenPlugin extends AbstractMojo {
             }
         }
 
+        // Only remove passing classes if no nested class of the same outer class had failures
         for (String className : classnameToTestcaseList.keySet()) {
             String outerClassName = getOuterClassName(className);
             List<String> failedTestCaseList = classnameToTestcaseList.get(className);

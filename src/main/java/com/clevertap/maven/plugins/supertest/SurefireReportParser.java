@@ -50,6 +50,9 @@ public class SurefireReportParser {
                 Element testCaseElement = (Element) testCase;
                 String testClassname = testCaseElement.getAttribute("classname");
 
+                // Surefire 3.x reports @Nested class tests under the outer class XML
+                // with the @DisplayName as classname. Since -Dtest cannot target methods
+                // inside nested classes, we rerun the entire outer class.
                 if (!testClassname.isEmpty() && !testClassname.equals(suiteClassName)) {
                     hasNestedClassFailure = true;
                 } else {
@@ -59,6 +62,8 @@ public class SurefireReportParser {
             }
         }
 
+        // Empty string signals createRerunCommand to rerun the entire class
+        // without method filtering
         if (hasNestedClassFailure) {
             uniqueNames.clear();
             uniqueNames.add("");
